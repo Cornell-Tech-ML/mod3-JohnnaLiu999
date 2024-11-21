@@ -1,186 +1,178 @@
 """Collection of the core mathematical operators used throughout the code base."""
 
-# ## Task 0.1
-
-#
-# Implementation of a prelude of elementary functions.
-
-# Mathematical functions:
-# - mul
-# - id
-# - add
-# - neg
-# - lt
-# - eq
-# - max
-# - is_close
-# - sigmoid
-# - relu
-# - log
-# - exp
-# - log_back
-# - inv
-# - inv_back
-# - relu_back
-#
-# For sigmoid calculate as:
-# $f(x) =  \frac{1.0}{(1.0 + e^{-x})}$ if x >=0 else $\frac{e^x}{(1.0 + e^{x})}$
-# For is_close:
-# $f(x) = |x - y| < 1e-2$
-
 import math
 from typing import Callable, Iterable
 
-### Task 0.1
-#
-# Implementation of a prelude of elementary functions.
+# from responses import start
 
 
 def mul(x: float, y: float) -> float:
-    """$f(x, y) = x * y$"""
-    # ASSIGN 0.1
+    """Multiply `x` by `y`"""
     return x * y
-    # END ASSIGN 0.1
 
 
 def id(x: float) -> float:
-    """$f(x) = x$"""
-    # ASSIGN 0.1
+    """Return input `x` unchanged"""
     return x
-    # END ASSIGN 0.1
 
 
 def add(x: float, y: float) -> float:
-    """$f(x, y) = x + y$"""
-    # ASSIGN 0.1
+    """Add `x` and `y`"""
     return x + y
-    # END ASSIGN 0.1
 
 
 def neg(x: float) -> float:
-    """$f(x) = -x$"""
-    # ASSIGN 0.1
+    """Negate `x`"""
     return -x
-    # END ASSIGN 0.1
 
 
 def lt(x: float, y: float) -> float:
-    """$f(x) = 1.0 if x is less than y else 0.0$"""
-    # ASSIGN 0.1
+    """Return True if `x` is less than `y`, otherwise returns False"""
     return 1.0 if x < y else 0.0
-    # END ASSIGN 0.1
 
 
-def eq(a: float, b: float) -> float:
-    """Returns 1.0 if a == b, else 0.0."""
-    return 1.0 if a == b else 0.0
+def eq(x: float, y: float) -> float:
+    """Return True if `x` is equal to  `y`, otherwise returns False"""
+    return 1.0 if x == y else 0.0
 
 
 def max(x: float, y: float) -> float:
-    """$f(x) = x if x is greater than y else y$"""
-    # ASSIGN 0.1
+    """Returns the maximum value between `x` and `y`"""
     return x if x > y else y
-    # END ASSIGN 0.1
 
 
-def is_close(x: float, y: float) -> bool:
-    """$f(x) = |x - y| < 1e-2$"""
-    # ASSIGN 0.1
+def is_close(x: float, y: float) -> float:
+    """Check if floats `x` and `y` are within 1e-2"""
     return (x - y < 1e-2) and (y - x < 1e-2)
-    # END ASSIGN 0.1
 
 
 def sigmoid(x: float) -> float:
-    r"""$f(x) = \frac{1.0}{(1.0 + e^{-x})}$
-
-    (See https://en.wikipedia.org/wiki/Sigmoid_function )
-
-    Calculate as
-
-    $f(x) = \frac{1.0}{(1.0 + e^{-x})}$ if x >=0 else $\frac{e^x}{(1.0 + e^{x})}$
-
-    for stability.
-    """
-    # ASSIGN 0.1
+    """Calculate the sigmoid activation function."""
     if x >= 0:
         return 1.0 / (1.0 + math.exp(-x))
     else:
         return math.exp(x) / (1.0 + math.exp(x))
-    # END ASSIGN 0.1
 
 
 def relu(x: float) -> float:
-    """$f(x) = x if x is greater than 0, else 0
+    """Applies the ReLU (Rectified Linear Unit) activation function.
 
-    (See https://en.wikipedia.org/wiki/Rectifier_(neural_networks) .)
+    Args:
+    ----
+        x (Number): The input value.
+
+    Returns:
+    -------
+        Number: The result of the ReLU function, which is max(0, x).
+
     """
-    # ASSIGN 0.1
     return x if x > 0 else 0.0
-    # END ASSIGN 0.1
 
 
 EPS = 1e-6
 
 
 def log(x: float) -> float:
-    """$f(x) = log(x)$"""
+    """Calculate the natural logarithm of `x`. Raises ValueError if `x` <= 0."""
     return math.log(x + EPS)
 
 
 def exp(x: float) -> float:
-    """$f(x) = e^{x}$"""
+    """Calculate the exponential function of `x` (returns e^x)."""
     return math.exp(x)
 
 
 def log_back(x: float, d: float) -> float:
-    r"""If $f = log$ as above, compute $d \times f'(x)$"""
-    # ASSIGN 0.1
-    return d / (x + EPS)
-    # END ASSIGN 0.1
-
-
-def inv(x: float) -> float:
-    """$f(x) = 1/x$"""
-    # ASSIGN 0.1
-    return 1.0 / x
-    # END ASSIGN 0.1
-
-
-def inv_back(x: float, d: float) -> float:
-    r"""If $f(x) = 1/x$ compute $d \times f'(x)$"""
-    # ASSIGN 0.1
-    return -(1.0 / x**2) * d
-    # END ASSIGN 0.1
-
-
-def relu_back(x: float, d: float) -> float:
-    r"""If $f = relu$ compute $d \times f'(x)$"""
-    # ASSIGN 0.1
-    return d if x > 0 else 0.0
-    # END ASSIGN 0.1
-
-
-### Task 0.3
-#
-# Small practice library of elementary higher-order functions.
-
-
-def map(fn: Callable[[float], float]) -> Callable[[Iterable[float]], Iterable[float]]:
-    """Higher-order map.
-
-    See https://en.wikipedia.org/wiki/Map_(higher-order_function)
+    """Compute the derivative of the natural logarithm function, scaled by a second argument.
 
     Args:
     ----
-    fn: Function from one value to one value.
+        x (Number): The input value, must be positive.
+        d (Number): The scaling factor for the derivative.
 
     Returns:
     -------
-    A function that takes a list, applies `fn` to each element, and returns a new list
+        float: The scaled derivative of the log function, calculated as d / x.
+
+    Raises:
+    ------
+        ValueError: If x is less than or equal to 0, as the derivative is undefined for non-positive numbers.
+
+    Example:
+    -------
+        >>> log_back(2, 3)
+        1.5
+
+    """
+    return d / (x + EPS)
+
+
+def inv(x: float) -> float:
+    """Calculate the reciprocal x (1/x). Raises ValueError if `x` is 0."""
+    return 1.0 / x
+
+
+def inv_back(x: float, d: float) -> float:
+    """Compute the derivative of the reciprocal function, scaled by a second argument.
+
+    Args:
+    ----
+        x (float): The input value, must not be 0.
+        d (float): The scaling factor for the derivative.
+
+    Returns:
+    -------
+        float: The scaled derivative of the reciprocal function, calculated as -d / x^2.
+
+    Raises:
+    ------
+        ValueError: If x is equal to 0, as the derivative is undefined.
+
+    Example:
+    -------
+        >>> inv_back(2, 3)
+        -0.75
+
+    """
+    return -(1.0 / x**2) * d
+
+
+def relu_back(x: float, d: float) -> float:
+    """Compute the derivative of the ReLU function, scaled by a second argument.
+
+    Args:
+    ----
+        x (float): The input value.
+        d (float): The scaling factor for the derivative.
+
+    Returns:
+    -------
+        Number: The scaled derivative of the ReLU function. Returns d if x > 0, otherwise 0.
+
+    Example:
+    -------
+        >>> relu_back(3, 2)
+        2
+        >>> relu_back(-1, 2)
+        0
+
+    """
+    return d if x > 0 else 0.0
+
+
+def map(fn: Callable[[float], float]) -> Callable[[Iterable[float]], Iterable[float]]:
+    """Higher-order tensor map function
+
+    Args:
+    ----
+        fn: Funciton from one vlaue to one value
+
+    Returns:
+    -------
+        A funciton that takes a list, applied 'fn' to each elmenet, and returns a new list.
 
     """
 
-    # ASSIGN 0.3
     def _map(ls: Iterable[float]) -> Iterable[float]:
         ret = []
         for x in ls:
@@ -188,35 +180,23 @@ def map(fn: Callable[[float], float]) -> Callable[[Iterable[float]], Iterable[fl
         return ret
 
     return _map
-    # END ASSIGN 0.3
-
-
-def negList(ls: Iterable[float]) -> Iterable[float]:
-    """Use `map` and `neg` to negate each element in `ls`"""
-    # ASSIGN 0.3
-    return map(neg)(ls)
-    # END ASSIGN 0.3
 
 
 def zipWith(
     fn: Callable[[float, float], float],
 ) -> Callable[[Iterable[float], Iterable[float]], Iterable[float]]:
-    """Higher-order zipWith (or map2).
-
-    See https://en.wikipedia.org/wiki/Map_(higher-order_function)
+    """Higher-order zipwith (or map2).
 
     Args:
     ----
-    fn: combine two values
+        fn: Function that takes two floats and returns a float.
 
     Returns:
     -------
-    Function that takes two equally sized lists `ls1` and `ls2`, produce a new list by
-    applying fn(x, y) on each pair of elements.
+        A function that takes two equally sized lists (lst1, lst2) and produces a new list applyigng fn(x, y) on each pair of elements)
 
     """
 
-    # ASSIGN 0.3
     def _zipWith(ls1: Iterable[float], ls2: Iterable[float]) -> Iterable[float]:
         ret = []
         for x, y in zip(ls1, ls2):
@@ -224,34 +204,35 @@ def zipWith(
         return ret
 
     return _zipWith
-    # END ASSIGN 0.3
-
-
-def addLists(ls1: Iterable[float], ls2: Iterable[float]) -> Iterable[float]:
-    """Add the elements of `ls1` and `ls2` using `zipWith` and `add`"""
-    # ASSIGN 0.3
-    return zipWith(add)(ls1, ls2)
-    # END ASSIGN 0.3
 
 
 def reduce(
     fn: Callable[[float, float], float], start: float
 ) -> Callable[[Iterable[float]], float]:
-    r"""Higher-order reduce.
+    """Reduces an iterable to a single value using a given function.
 
     Args:
     ----
-    fn: combine two values
-    start: start value $x_0$
+        fn: A function that takes two floats and returns a float.
+            This function will be applied cumulatively to the elements of the iterable.
+        lst: An iterable of floats to be reduced.
+        start: The initial value for the reduction.
 
     Returns:
     -------
-    Function that takes a list `ls` of elements
-    $x_1 \ldots x_n$ and computes the reduction :math:`fn(x_3, fn(x_2, fn(x_1, x_0)))`
+        A float that is the result of reducing the iterable using the function `fn`.
+
+    Raises:
+    ------
+        TypeError: If the iterable `lst` is empty.
+
+    Example:
+    -------
+        >>> reduce(lambda x, y: x + y, [1.0, 2.0, 3.0, 4.0])
+        10.0
 
     """
 
-    # ASSIGN 0.3
     def _reduce(ls: Iterable[float]) -> float:
         val = start
         for l in ls:
@@ -259,18 +240,28 @@ def reduce(
         return val
 
     return _reduce
-    # END ASSIGN 0.3
 
 
-def sum(ls: Iterable[float]) -> float:
-    """Sum up a list using `reduce` and `add`."""
-    # ASSIGN 0.3
-    return reduce(add, 0.0)(ls)
-    # END ASSIGN 0.3
+def negList(lst: Iterable[float]) -> Iterable[float]:
+    """Negate all elements in a list."""
+    # return map(lambda x: -x, lst)
+    return map(neg)(lst)
 
 
-def prod(ls: Iterable[float]) -> float:
-    """Product of a list using `reduce` and `mul`."""
-    # ASSIGN 0.3
-    return reduce(mul, 1.0)(ls)
-    # END ASSIGN 0.3
+def addLists(lst1: Iterable[float], lst2: Iterable[float]) -> Iterable[float]:
+    """Add corresponding elements from two lists."""
+    # return zipWith(lambda x, y: x + y, lst1, lst2)
+    return zipWith(add)(lst1, lst2)
+
+
+def sum(lst: Iterable[float]) -> float:
+    """Sum all elements in a list."""
+    # if not lst:
+    #     return 0.0  # Return 0 for an empty list
+    # return reduce(lambda x, y: x + y, lst)
+    return reduce(add, 0.0)(lst)
+
+
+def prod(lst: Iterable[float]) -> float:
+    """Calculate the product of all elements in a list."""
+    return reduce(mul, 1.0)(lst)
