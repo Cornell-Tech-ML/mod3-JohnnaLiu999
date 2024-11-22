@@ -629,3 +629,72 @@ def _tensor_matrix_multiply(
 
 # Compile the CUDA kernel with Numba
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from time import time
+
+# Helper function for naive CPU matrix multiplication
+def naive_matrix_multiply(a, b):
+    size = a.shape[0]
+    out = np.zeros((size, size))
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                out[i, j] += a[i, k] * b[k, j]
+    return out
+
+# Test and performance comparison
+def test_cuda_vs_naive():
+    sizes = [4, 8, 16, 32, 64, 128, 256, 512]  # Increasing sizes
+    naive_times = []
+    cuda_times = []
+
+    for size in sizes:
+        print(f"Testing size: {size}")
+        # Create random matrices
+        a = np.random.rand(size, size).astype(np.float64)
+        b = np.random.rand(size, size).astype(np.float64)
+
+        # Naive matrix multiplication
+        start_time = time()
+        naive_out = naive_matrix_multiply(a, b)
+        naive_times.append(time() - start_time)
+
+        # CUDA matrix multiplication
+        a_tensor = TensorData(list(a.flatten()), (size, size))
+        b_tensor = TensorData(list(b.flatten()), (size, size))
+        a_tensor.to_cuda_()
+        b_tensor.to_cuda_()
+
+        start_time = time()
+        cuda_out = mm_practice(a_tensor, b_tensor)  # Call CUDA kernel
+        cuda_out.to_cpu()
+        cuda_times.append(time() - start_time)
+
+        # Verify correctness
+        np.testing.assert_allclose(
+            np.array(cuda_out._tensor._storage).reshape(size, size),
+            naive_out,
+            atol=1e-5,
+            err_msg=f"Mismatch at size {size}",
+        )
+        print(f"Size {size}: Passed!")
+
+    return sizes, naive_times, cuda_times
+
+# Generate graph
+def plot_results(sizes, naive_times, cuda_times):
+    plt.figure()
+    plt.plot(sizes, naive_times, label="Naive (CPU)")
+    plt.plot(sizes, cuda_times, label="CUDA")
+    plt.xlabel("Matrix Size")
+    plt.ylabel("Time (s)")
+    plt.title("Matrix Multiplication Performance: CUDA vs Naive")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+# Run test and plot
+sizes, naive_times, cuda_times = test_cuda_vs_naive()
+plot_results(sizes, naive_times, cuda_times)

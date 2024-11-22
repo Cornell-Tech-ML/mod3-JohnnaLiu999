@@ -6,14 +6,14 @@ import numpy as np
 from numba import prange
 from numba import njit as _njit
 
-from .tensor_data import (
+from minitorch.tensor_data import (
     MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
     to_index,
 )
-from .tensor_ops import MapProto, TensorOps
+from minitorch.tensor_ops import MapProto, TensorOps
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
