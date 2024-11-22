@@ -32,6 +32,7 @@ The files that will be synced are:
         minitorch/tensor_data.py minitorch/tensor_functions.py minitorch/tensor_ops.py minitorch/operators.py minitorch/scalar.py minitorch/scalar_functions.py minitorch/module.py minitorch/autodiff.py minitorch/module.py project/run_manual.py project/run_scalar.py project/run_tensor.py minitorch/operators.py minitorch/module.py minitorch/autodiff.py minitorch/tensor.py minitorch/datasets.py minitorch/testing.py minitorch/optim.py
 
 #Task 3.1 & 3.2
+```
 MAP
  
 ================================================================================
@@ -325,6 +326,7 @@ Parallel structure is already optimal.
 Allocation hoisting:
 No allocation hoisting found
 None
+```
 
 #Task 3.3
 #Task 3.4
