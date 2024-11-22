@@ -170,23 +170,24 @@ def tensor_map(
     ) -> None:
         # TODO: Implement for Task 3.1.
         # raise NotImplementedError("Need to implement for Task 3.1")
-        # if shapes and strides are the same, we can just apply map avoid indexing
         if list(out_shape) == list(in_shape) and list(out_strides) == list(in_strides):
-            # parallel main loop
+            # Main loop in parallel
             for i in prange(len(out)):
                 out[i] = fn(in_storage[i])
-        # else, we need to handle the broadcasting
+
         else:
             for i in prange(len(out)):
-                # numpy buffers for indices
+                # All indices use numpy buffers
                 in_i = np.empty(MAX_DIMS, np.int32)
                 out_i = np.empty(MAX_DIMS, np.int32)
                 to_index(i, out_shape, out_i)
-                broadcast_index(out_i, out_shape, in_shape, in_i)  # handle broadcasting
+                broadcast_index(out_i, out_shape, in_shape, in_i)
                 # convert back to positions
                 in_pos = index_to_position(in_i, in_strides)
                 out_pos = index_to_position(out_i, out_strides)
-                out[out_pos] = fn(in_storage[in_pos])
+                out[out_pos] = fn(
+                    in_storage[in_pos]
+                )  # When `out` and `in` are stride-aligned, avoid indexing
 
     return njit(_map, parallel=True)  # type: ignore
 
@@ -231,11 +232,11 @@ def tensor_zip(
         if (list(out_shape) == list(a_shape) == list(b_shape)) and (
             list(out_strides) == list(a_strides) == list(b_strides)
         ):
-            for i in prange(len(out)):  # parallel main loop
+            for i in prange(len(out)):  # Main loop in parallel
                 out[i] = fn(a_storage[i], b_storage[i])
         else:
             for i in prange(len(out)):
-                a_i = np.empty(MAX_DIMS, np.int32)  # numpy buffers for indices
+                a_i = np.empty(MAX_DIMS, np.int32)  # All Indices Use NumPy Buffers
                 b_i = np.empty(MAX_DIMS, np.int32)
                 out_i = np.empty(MAX_DIMS, np.int32)
                 # convert the positions to indicees
@@ -246,7 +247,9 @@ def tensor_zip(
                 a_pos = index_to_position(a_i, a_strides)
                 b_pos = index_to_position(b_i, b_strides)
                 out_pos = index_to_position(out_i, out_strides)
-                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+                out[out_pos] = fn(
+                    a_storage[a_pos], b_storage[b_pos]
+                )  # Avoid Indexing When out and in are Stride-Aligned
 
     return njit(_zip, parallel=True)  # type: ignore
 
@@ -283,17 +286,19 @@ def tensor_reduce(
     ) -> None:
         # TODO: Implement for Task 3.1.
         # raise NotImplementedError("Need to implement for Task 3.1")
-        # parallel main loop
+        # Main loop in parallel
         reduce_size = a_shape[reduce_dim]
         reduce_stride = a_strides[reduce_dim]
         for i in prange(len(out)):
-            out_i = np.empty(MAX_DIMS, np.int32)  # numpy buffers
+            out_i = np.empty(MAX_DIMS, np.int32)  # All indices use numpy buffers
             to_index(i, out_shape, out_i)  # convert position to index
             out_pos = index_to_position(out_i, out_strides)
             in_pos = index_to_position(out_i, a_strides)  # calls outside inner loop
             # current output value
             cur = out[out_pos]
-            for _ in range(reduce_size):
+            for _ in range(
+                reduce_size
+            ):  # Inner-loop should not call any functions or write non-local variables
                 cur = fn(cur, a_storage[in_pos])
                 in_pos += reduce_stride
             out[out_pos] = cur
@@ -354,11 +359,11 @@ def _tensor_matrix_multiply(
     a_col_s = a_strides[2]
     b_row_s = b_strides[1]
     b_col_s = b_strides[2]
-    # Parallelize outer loop over batches and rows
+    # Outer loop in parallel
     for batch in prange(out_shape[0]):
         for i in range(out_shape[1]):
             for j in range(out_shape[2]):
-                # Calculate output position
+                # No index buffers or function calls
                 out_pos = (
                     batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]
                 )
@@ -366,7 +371,7 @@ def _tensor_matrix_multiply(
                 # Calculate starting positions for this batch/row
                 a_in = batch * a_batch_s + i * a_row_s
                 b_in = batch * b_batch_s + j * b_col_s
-                # Inner dot product loop
+                # Inner loop should have no global writes, 1 multiply.
                 for k in range(reduced_size):
                     a_pos = a_in + k * a_col_s
                     b_pos = b_in + k * b_row_s

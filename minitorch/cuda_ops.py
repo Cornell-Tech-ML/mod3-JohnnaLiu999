@@ -469,30 +469,39 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     None
 
     """
-    BLOCK_DIM = 32
+    BLOCK_DIM = 32  # Define the block size for shared memory tiles
+
     # TODO: Implement for Task 3.3.
     # raise NotImplementedError("Need to implement for Task 3.3")
+    # Allocate shared memory for tiles of matrix A and B
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
 
+    # Get thread indices within the block
     i = cuda.threadIdx.x
     j = cuda.threadIdx.y
 
+    # If the thread indices exceed the matrix size, return early (out of bounds)
     if i >= size or j >= size:
         return
+
     # Moving data to shared memory
     a_shared[i, j] = a[size * i + j]
     b_shared[i, j] = b[size * i + j]
     cuda.syncthreads()
 
+    # Initialize an accumulator for the result of this thread
     accum = 0.0
 
+    # Perform the dot product for the current row (i) and column (j)
     for k in range(size):
         accum += a_shared[i, k] * b_shared[k, j]
 
+    # Write the result to the output matrix in global memory
     out[size * i + j] = accum
 
 
+# Compile the CUDA kernel with Numba
 jit_mm_practice = jit(_mm_practice)
 
 
@@ -516,11 +525,14 @@ def mm_practice(a: Tensor, b: Tensor) -> TensorData:
     - Synchronization barriers ensure correctness during computation.
 
     """
-    (size, _) = a.shape
-    threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK)
-    blockspergrid = 1
+    (size, _) = a.shape  # Extract the size of the square matrix
+    threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK)  # Set threads per block
+    blockspergrid = 1  # Single block for simplicity (for now)
+
+    # Create an output tensor and transfer it to CUDA
     out = TensorData([0.0 for i in range(size * size)], (size, size))
     out.to_cuda_()
+    # Launch the compiled CUDA kernel with grid and block dimensions
     jit_mm_practice[blockspergrid, threadsperblock](
         out.tuple()[0], a._tensor._storage, b._tensor._storage, size
     )
@@ -555,20 +567,23 @@ def _tensor_matrix_multiply(
     Returns:
         None : Fills in `out`
     """
+    # Determine batch strides for A and B to handle broadcasting
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
     # Batch dimension - fixed
     batch = cuda.blockIdx.z
 
+    # Define the block size for shared memory tiles
     BLOCK_DIM = 32
+    # Allocate shared memory for tiles of matrix A and B
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
 
-    # The final position c[i, j]
+    # Compute the global thread position (i, j) in the output matrix
     i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
     j = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y
 
-    # The local position in the block.
+    # Compute the local thread position (pi, pj) within the block
     pi = cuda.threadIdx.x
     pj = cuda.threadIdx.y
 
@@ -579,16 +594,20 @@ def _tensor_matrix_multiply(
     #    c) Compute the dot produce for position c[i, j]
     # TODO: Implement for Task 3.4.
     # raise NotImplementedError("Need to implement for Task 3.4")
+    # Initialize an accumulator for the dot product result
     accum = 0.0
+
+    # Iterate over tiles of the shared dimension
     for idx in range(0, a_shape[2], BLOCK_DIM):
-        # We get the absolute value of the index with respect to all of the blocks
+        # Compute the global column index for A and B
         k = idx + pj
-        # i and k must be within the shape. a has shape [batch, i, k]
+        # Load tiles of A into shared memory (if within bounds)
         if i < a_shape[1] and k < a_shape[2]:
             # We get the absolute value in a_storage by multiplying the batch dimension and indices with the strides
             a_shared[pi, pj] = a_storage[
                 a_batch_stride * batch + a_strides[1] * i + a_strides[2] * k
             ]
+        # Load tiles of B into shared memory (if within bounds)
         k = idx + pi
         # j and k must be within the shape. b has shape [batch, k, j]
         if j < b_shape[2] and k < b_shape[1]:
@@ -596,15 +615,17 @@ def _tensor_matrix_multiply(
             b_shared[pi, pj] = b_storage[
                 b_batch_stride * batch + b_strides[2] * j + b_strides[1] * k
             ]
-        # After writing to shared arrays we need to sync the threads
+        # Synchronize threads to ensure all data is loaded
         cuda.syncthreads()
+        # Perform the matrix multiplication for this tile
         for k in range(BLOCK_DIM):
             if (idx + k) < a_shape[2]:
                 accum += a_shared[pi, k] * b_shared[k, pj]
-    # We need to make sure i and j are within shape. out has shape [batch, i , j]
+    # Write the final result to the output matrix (if within bounds)
     if i < out_shape[1] and j < out_shape[2]:
         # We find the absolute position in out storage by multiplying the strides with the batch dimension and the indices and set it to accum
         out[out_strides[0] * batch + out_strides[1] * i + out_strides[2] * j] = accum
 
 
+# Compile the CUDA kernel with Numba
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
