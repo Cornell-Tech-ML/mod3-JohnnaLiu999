@@ -77,8 +77,8 @@ class FastTrain:
         losses = []
 
         for epoch in range(max_epochs):
-            start_time = time.time() 
-            
+            start_time = time.time()
+
             total_loss = 0.0
             c = list(zip(data.X, data.y))
             random.shuffle(c)
@@ -103,7 +103,7 @@ class FastTrain:
             losses.append(total_loss)
             end_time = time.time()  # End timing the epoch
             epoch_time = end_time - start_time
-            
+
             # Logging
             if epoch % 10 == 0 or epoch == max_epochs:
                 X = minitorch.tensor(data.X, backend=self.backend)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     if args.DATASET == "xor":
         data = minitorch.datasets["Xor"](PTS)
     elif args.DATASET == "simple":
-        data = minitorch.datasets["Simple"].simple(PTS)
+        data = minitorch.datasets["Simple"](PTS)
     elif args.DATASET == "split":
         data = minitorch.datasets["Split"](PTS)
 
