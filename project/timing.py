@@ -5,11 +5,8 @@ import time
 import sys
 import numpy as np
 
-from fast_ops import FastOps
-from cuda_ops import CudaOps
-
-FastTensorBackend = minitorch.TensorBackend(FastOps)
-GPUBackend = minitorch.TensorBackend(CudaOps)
+FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
+GPUBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
 def run_matmul(backend, size=16) -> None:
