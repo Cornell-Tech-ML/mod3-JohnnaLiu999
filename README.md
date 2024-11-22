@@ -328,7 +328,35 @@ No allocation hoisting found
 None
 ```
 
+# Task 3.3
+```
+======================================= test session starts ========================================
+platform linux -- Python 3.12.7, pytest-8.3.2, pluggy-1.5.0
+rootdir: /content/mod3-JohnnaLiu999
+configfile: pyproject.toml
+plugins: env-1.1.4, hypothesis-6.54.0
+collected 279 items / 222 deselected / 57 selected                                                 
+
+tests/test_tensor_general.py .........................................................       [100%]
+...
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 57 passed, 222 deselected, 4309 warnings in 229.07s (0:03:49) ===================
+```
+
 # Task 3.4
+```
+======================================= test session starts ========================================
+platform linux -- Python 3.12.7, pytest-8.3.2, pluggy-1.5.0
+rootdir: /content/mod3-JohnnaLiu999
+configfile: pyproject.toml
+plugins: env-1.1.4, hypothesis-6.54.0
+collected 279 items / 272 deselected / 7 selected                                                  
+
+tests/test_tensor_general.py .......                                                         [100%]
+...
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 7 passed, 272 deselected, 141 warnings in 9.82s ==========================
+```
 
 ![image](https://github.com/user-attachments/assets/821954a6-f174-446f-b079-8c548566f512)
 
