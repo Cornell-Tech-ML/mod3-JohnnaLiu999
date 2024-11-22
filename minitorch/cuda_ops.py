@@ -30,10 +30,28 @@ Fn = TypeVar("Fn")
 
 
 def device_jit(fn: Fn, **kwargs) -> Fn:
+    """JIT compile a function for CUDA device execution.
+
+    Args:
+        fn (Fn): The Python function to compile.
+        **kwargs: Additional arguments for the Numba JIT compiler.
+
+    Returns:
+        Fn: A device-compiled version of the input function.
+    """
     return _jit(device=True, **kwargs)(fn)  # type: ignore
 
 
 def jit(fn, **kwargs) -> FakeCUDAKernel:
+    """JIT compile a CUDA kernel function.
+
+    Args:
+        fn (Callable): The Python function to compile.
+        **kwargs: Additional arguments for the Numba JIT compiler.
+
+    Returns:
+        FakeCUDAKernel: A compiled CUDA kernel.
+    """
     return _jit(**kwargs)(fn)  # type: ignore
 
 
@@ -67,7 +85,24 @@ class CudaOps(TensorOps):
 
     @staticmethod
     def zip(fn: Callable[[float, float], float]) -> Callable[[Tensor, Tensor], Tensor]:
+        """Create a CUDA zip operation for element-wise transformations on two tensors.
+
+        This method compiles a binary function `fn` for execution on CUDA. The compiled
+        function is applied element-wise to two tensors using a CUDA kernel.
+
+        Args:
+        ----
+            fn (Callable[[float, float], float]): A binary function that maps two floats
+                                                to a float.
+
+        Returns:
+        -------
+            Callable[[Tensor, Tensor], Tensor]: A callable that applies the transformation
+                                                to two tensors.
+
+        """
         cufn: Callable[[float, float], float] = device_jit(fn)
+        
         f = tensor_zip(cufn)
 
         def ret(a: Tensor, b: Tensor) -> Tensor:
@@ -86,6 +121,23 @@ class CudaOps(TensorOps):
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
     ) -> Callable[[Tensor, int], Tensor]:
+        """Create a CUDA reduce operation for tensor reduction along a dimension.
+
+        This method compiles a binary reduction function `fn` for execution on CUDA.
+        The compiled function reduces a tensor along a specified dimension using the
+        CUDA kernel.
+
+        Args:
+        ----
+            fn (Callable[[float, float], float]): A binary function for reduction.
+            start (float): The initial value for the reduction operation.
+
+        Returns:
+        -------
+            Callable[[Tensor, int], Tensor]: A callable that performs the reduction on
+                                            the tensor.
+
+        """
         cufn: Callable[[float, float], float] = device_jit(fn)
         f = tensor_reduce(cufn)
 
@@ -106,6 +158,26 @@ class CudaOps(TensorOps):
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
+        """Perform matrix multiplication on two tensors using CUDA.
+
+        This method supports 2D matrix multiplication or batched 3D matrix multiplication.
+        Shared memory and CUDA blocks are used for efficient computation.
+
+        Args:
+        ----
+            a (Tensor): The first input tensor.
+            b (Tensor): The second input tensor.
+
+        Returns:
+        -------
+            Tensor: The resulting tensor from the matrix multiplication.
+
+        Notes:
+        -----
+        - Both input tensors are reshaped to 3D for compatibility with batched operations.
+        - The function ensures the matrix dimensions match the required shape for multiplication.
+
+        """
         # Make these always be a 3 dimensional multiply
         both_2d = 0
         if len(a.shape) == 2:
@@ -234,24 +306,22 @@ def tensor_zip(
 
 
 def _sum_practice(out: Storage, a: Storage, size: int) -> None:
-    """This is a practice sum kernel to prepare for reduce.
+    """Practice CUDA kernel for summing elements within blocks.
 
-    Given an array of length $n$ and out of size $n // \text{blockDIM}$
-    it should sum up each blockDim values into an out cell.
-
-    $[a_1, a_2, ..., a_{100}]$
-
-    |
-
-    $[a_1 +...+ a_{31}, a_{32} + ... + a_{64}, ... ,]$
-
-    Note: Each block must do the sum using shared memory!
+    This kernel performs a block-wise sum of an input array `a` and stores
+    the results in the output array `out`. Shared memory is used for efficiency.
 
     Args:
     ----
-        out (Storage): storage for `out` tensor.
-        a (Storage): storage for `a` tensor.
-        size (int):  length of a.
+        out (Storage): Storage for the output tensor.
+        a (Storage): Storage for the input tensor.
+        size (int): Length of the input tensor `a`.
+
+    Notes:
+    -----
+    - The input tensor is divided into blocks of size `BLOCK_DIM`.
+    - Each block computes the sum of its elements using shared memory.
+    - The sum for each block is written to the corresponding cell in `out`.
 
     """
     BLOCK_DIM = 32
@@ -281,6 +351,20 @@ jit_sum_practice = cuda.jit()(_sum_practice)
 
 
 def sum_practice(a: Tensor) -> TensorData:
+    """Compute the sum of elements in a tensor using a CUDA kernel.
+
+    This function invokes the `_sum_practice` kernel to compute a block-wise
+    sum of the input tensor.
+
+    Args:
+    ----
+        a (Tensor): The input tensor to be summed.
+
+    Returns:
+    -------
+        TensorData: A tensor containing the block-wise sums.
+
+    """
     (size,) = a.shape
     threadsperblock = THREADS_PER_BLOCK
     blockspergrid = (size // THREADS_PER_BLOCK) + 1
@@ -347,34 +431,33 @@ def tensor_reduce(
 
 
 def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
-    """This is a practice square MM kernel to prepare for matmul.
+    """__mm_practice is a CUDA matrix multiplication kernel.
 
-    Given a storage `out` and two storage `a` and `b`. Where we know
-    both are shape [size, size] with strides [size, 1].
+    This kernel assumes that the input and output matrices are in row-major
+    order. The kernel divides the matrix into blocks of size BLOCK_DIM x
+    BLOCK_DIM and performs the matrix multiplication block by block.
 
-    Size is always < 32.
+    The kernel uses shared memory to store the tiles of the input matrices,
+    and uses registers to store the partial results of the multiplication.
 
-    Requirements:
+    The kernel also uses synchronization barriers to ensure that all threads
+    in the block have finished loading the data before performing the
+    multiplication.
 
-    * All data must be first moved to shared memory.
-    * Only read each cell in `a` and `b` once.
-    * Only write to global memory once per kernel.
+    Parameters
+    ----------
+    out : Storage
+        Storage for the output matrix.
+    a : Storage
+        Storage for the input matrix A.
+    b : Storage
+        Storage for the input matrix B.
+    size : int
+        Size of the matrix (number of rows and columns).
 
-    Compute
-
-    ```
-     for i:
-         for j:
-              for k:
-                  out[i, j] += a[i, k] * b[k, j]
-    ```
-
-    Args:
-    ----
-        out (Storage): storage for `out` tensor.
-        a (Storage): storage for `a` tensor.
-        b (Storage): storage for `b` tensor.
-        size (int): size of the square
+    Returns
+    -------
+    None
 
     """
     BLOCK_DIM = 32
@@ -404,6 +487,25 @@ jit_mm_practice = jit(_mm_practice)
 
 
 def mm_practice(a: Tensor, b: Tensor) -> TensorData:
+    """CUDA kernel for matrix multiplication using shared memory.
+
+    This kernel performs block-based matrix multiplication using tiles stored
+    in shared memory for efficient computation.
+
+    Args:
+    ----
+        out (Storage): Storage for the output matrix.
+        a (Storage): Storage for the first input matrix.
+        b (Storage): Storage for the second input matrix.
+        size (int): Number of rows and columns in the square matrices.
+
+    Notes:
+    -----
+    - Input and output matrices are assumed to be in row-major order.
+    - The kernel divides matrices into tiles of size `BLOCK_DIM x BLOCK_DIM`.
+    - Synchronization barriers ensure correctness during computation.
+
+    """
     (size, _) = a.shape
     threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK)
     blockspergrid = 1
